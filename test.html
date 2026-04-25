@@ -1,0 +1,961 @@
+<html lang="en">
+<head>
+    <title>moxi test suite</title>
+    <script>
+        let tests = [];
+        let currentTest = null;
+        let passed = 0;
+        let failed = 0;
+        let find = (selector) => currentTest.testElt.querySelector(selector);
+        function test(code){
+            let currentScript = document.currentScript;
+            let testElt = currentScript.closest('div');
+            tests.push(async ()=>{
+                currentTest.testElt = testElt;
+                try {
+                    await code();
+                    testElt.classList.add("passed");
+                    testElt.insertAdjacentHTML('beforeend', `<p>Passed</p>`)
+                    passed++;
+                    document.querySelector(".passed-info").querySelector("output").innerText = passed.toString();
+                } catch (e) {
+                    testElt.classList.add("failed");
+                    testElt.insertAdjacentHTML('beforeend', `<p>ERROR: ${e}</p>`)
+                    failed++;
+                    document.querySelector(".failed-info").querySelector("output").innerText = failed.toString();
+                } finally {
+                    currentTest = null;
+                }
+            })
+        }
+        function sleep(ms) {
+            return new Promise((resolve) => setTimeout(resolve, ms));
+        }
+        function assertEq(actual, expected, trim) {
+            if (expected !== (trim ? actual?.trim() : actual)) {
+                console.error("Expected", expected, "found", actual);
+                throw `Expected ${expected} found ${actual}`
+            }
+        }
+        document.addEventListener('DOMContentLoaded', async () => {
+            for (let i = 0; i < document.querySelectorAll(".test").length; i++){
+                const testBlock = document.querySelectorAll(".test")[i];
+                testBlock.querySelector("h3").insertAdjacentHTML("beforeend", ` - <a id='test${i}' href="test.html?test${i}">run</a>`)
+                let scriptElt = testBlock.querySelector("script");
+                scriptElt.insertAdjacentHTML("beforebegin", `<b>Code:</b><pre></pre>`)
+                scriptElt.previousElementSibling.innerText = scriptElt.innerText.replaceAll(/^ {8}/gm, '') + "\n";
+                if (location.search.indexOf("?test") === 0) {
+                  let index = parseInt(location.search.substring(5));
+                  if (index !== i) {
+                    testBlock.setAttribute("mx-ignore", 'true');
+                  } else {
+                    testBlock.scrollIntoView()
+                  }
+                }
+            }
+            setTimeout(async ()=>{
+              for (let i = 0; i < tests.length; i++){
+                if (location.search.indexOf("?test") === 0) {
+                  let index = parseInt(location.search.substring(5));
+                  if (index !== i) continue;
+                }
+                currentTest = tests[i];
+                await currentTest();
+              }
+            })
+        });
+    </script>
+    <script src="moxi.js"></script>
+    <style>
+        .test {
+            padding: 8px;
+            margin: 8px;
+        }
+        .passed {
+            border: 3px solid green;
+        }
+        .failed {
+            border: 3px solid red;
+        }
+        .passed-info {
+            color: green;
+        }
+        .failed-info {
+            color: red;
+        }
+        pre {
+            padding: 4px;
+            margin: 12px;
+            border: 1px solid rgb(128, 128, 128);
+            background-color: whitesmoke;
+        }
+        body.hide-passed .passed {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>&#x1F94A; moxi test suite</h1>
+    <div>
+        <div class="passed-info">Passed: <output></output></div>
+        <div class="failed-info">Failed: <output></output></div>
+        <a href="javascript:document.body.classList.toggle('hide-passed')">Toggle Passed</a><br/>
+        <a href="test.html">Run All</a>
+    </div>
+</header>
+
+<main>
+
+    <section id="bindings">
+        <h2>Event bindings</h2>
+
+        <div class="test">
+            <h3>on-click fires handler</h3>
+            <script>
+                test(async () => {
+                    window.__t1 = null;
+                    find('button').click();
+                    assertEq(window.__t1, true);
+                })
+            </script>
+            <button on-click="window.__t1 = true">go</button>
+        </div>
+
+        <div class="test">
+            <h3>handler's `this` is the element</h3>
+            <script>
+                test(async () => {
+                    window.__t2 = null;
+                    find('#b2').click();
+                    assertEq(window.__t2, "b2");
+                })
+            </script>
+            <button id="b2" on-click="window.__t2 = this.id">go</button>
+        </div>
+
+        <div class="test">
+            <h3>handler receives event parameter</h3>
+            <script>
+                test(async () => {
+                    window.__t3 = null;
+                    find('button').click();
+                    assertEq(window.__t3, "click");
+                })
+            </script>
+            <button on-click="window.__t3 = event.type">go</button>
+        </div>
+
+        <div class="test">
+            <h3>multiple on- attributes on one element</h3>
+            <script>
+                test(async () => {
+                    window.__t4a = 0; window.__t4b = 0;
+                    let btn = find('button');
+                    btn.click();
+                    btn.dispatchEvent(new CustomEvent("custom", {detail: 5}));
+                    assertEq(window.__t4a, 1);
+                    assertEq(window.__t4b, 5);
+                })
+            </script>
+            <button on-click="window.__t4a++" on-custom="window.__t4b += event.detail">go</button>
+        </div>
+
+        <div class="test">
+            <h3>mx-ignore skips descendants</h3>
+            <script>
+                test(async () => {
+                    window.__t5 = 0;
+                    find('button').click();
+                    assertEq(window.__t5, 0);
+                })
+            </script>
+            <div mx-ignore><button on-click="window.__t5++">go</button></div>
+        </div>
+
+        <div class="test">
+            <h3>mx-ignore on the element itself skips init</h3>
+            <script>
+                test(async () => {
+                    window.__t11 = 0;
+                    find('button').click();
+                    assertEq(window.__t11, 0);
+                })
+            </script>
+            <button mx-ignore on-click="window.__t11++">go</button>
+        </div>
+
+        <div class="test">
+            <h3>MutationObserver picks up dynamically added elements</h3>
+            <script>
+                test(async () => {
+                    window.__t6 = 0;
+                    find('#host6').innerHTML = `<button on-click="window.__t6++">go</button>`;
+                    await sleep(30);
+                    find('#host6 button').click();
+                    assertEq(window.__t6, 1);
+                })
+            </script>
+            <div id="host6"></div>
+        </div>
+
+        <div class="test">
+            <h3>on- handles colon-separated event names (fx:after)</h3>
+            <script>
+                test(async () => {
+                    window.__t10 = null;
+                    find('#p3').dispatchEvent(new CustomEvent("fx:after", {detail: {ok: 42}, bubbles: true}));
+                    assertEq(window.__t10, 42);
+                })
+            </script>
+            <div id="p3" on-fx:after="window.__t10 = event.detail.ok">x</div>
+        </div>
+
+        <div class="test">
+            <h3>event.detail keys are exposed as bare names inside the handler</h3>
+            <script>
+                test(async () => {
+                    window.__d1 = null;
+                    find('#d1').dispatchEvent(new CustomEvent("fx:config", {detail: {cfg: {x: 7}}, bubbles: true}));
+                    assertEq(window.__d1, 7);
+                })
+            </script>
+            <div id="d1" on-fx:config="window.__d1 = cfg.x">x</div>
+        </div>
+
+        <div class="test">
+            <h3>writes to bare-name detail values propagate back to event.detail</h3>
+            <script>
+                test(async () => {
+                    let cfg = { name: 'before' };
+                    find('#d2').dispatchEvent(new CustomEvent("fx:config", {detail: {cfg}, bubbles: true}));
+                    // mutating cfg.name through bare-name access should hit the same object
+                    assertEq(cfg.name, 'after');
+                    // and reassigning cfg itself should land back on the detail
+                    let detail = {cfg: {name: 'old'}};
+                    find('#d3').dispatchEvent(new CustomEvent("fx:config", {detail, bubbles: true}));
+                    assertEq(detail.cfg.name, 'replaced');
+                })
+            </script>
+            <div id="d2" on-fx:config="cfg.name = 'after'">x</div>
+            <div id="d3" on-fx:config="cfg = {name: 'replaced'}">x</div>
+        </div>
+
+        <div class="test">
+            <h3>handler still works when event has no detail</h3>
+            <script>
+                test(async () => {
+                    window.__d4 = 0;
+                    // CustomEvent always has detail, but generic Event has detail = undefined
+                    find('#d4').dispatchEvent(new Event("plain", {bubbles: true}));
+                    assertEq(window.__d4, 1);
+                })
+            </script>
+            <div id="d4" on-plain="window.__d4++">x</div>
+        </div>
+
+        <div class="test">
+            <h3>re-processing does not double-bind</h3>
+            <script>
+                test(async () => {
+                    window.__t9 = 0;
+                    let btn = find('#p2');
+                    btn.dispatchEvent(new CustomEvent("mx:process", {bubbles: true}));
+                    btn.click();
+                    assertEq(window.__t9, 1);
+                })
+            </script>
+            <button id="p2" on-click="window.__t9++">go</button>
+        </div>
+
+        <div class="test">
+            <h3>elt.__moxi exposes handler for event name</h3>
+            <script>
+                test(async () => {
+                    assertEq(typeof find('#p1').__moxi.click, "function");
+                })
+            </script>
+            <button id="p1" on-click="">go</button>
+        </div>
+
+        <div class="test">
+            <h3>mx:init preventDefault blocks binding</h3>
+            <script>
+                test(async () => {
+                    window.__t7 = 0;
+                    let handler = (e) => { if (e.target.matches("[mx-cancel]")) e.preventDefault() };
+                    document.addEventListener("mx:init", handler);
+                    currentTest.testElt.insertAdjacentHTML('beforeend', `<button mx-cancel on-click="window.__t7++">go</button>`);
+                    await sleep(30);
+                    find('[mx-cancel]').click();
+                    document.removeEventListener("mx:init", handler);
+                    assertEq(window.__t7, 0);
+                })
+            </script>
+        </div>
+
+        <div class="test">
+            <h3>mx:inited fires on initialized elements</h3>
+            <script>
+                test(async () => {
+                    let fired = false;
+                    let handler = (e) => { if (e.target.matches("[data-inited]")) fired = true };
+                    document.addEventListener("mx:inited", handler, true);
+                    currentTest.testElt.insertAdjacentHTML('beforeend', `<button data-inited on-click="">go</button>`);
+                    await sleep(30);
+                    document.removeEventListener("mx:inited", handler, true);
+                    assertEq(fired, true);
+                })
+            </script>
+        </div>
+
+        <div class="test">
+            <h3>on-init fires immediately at bind time</h3>
+            <script>
+                test(async () => {
+                    assertEq(find('#i1').dataset.inited, "i1");
+                })
+            </script>
+            <div id="i1" on-init="this.dataset.inited = this.id"></div>
+        </div>
+    </section>
+
+    <section id="query">
+        <h2>q() query helper</h2>
+
+        <div class="test">
+            <h3>q('next output') sets property on following element</h3>
+            <script>
+                test(async () => {
+                    find('button').click();
+                    assertEq(find('output').innerText, "hi");
+                })
+            </script>
+            <button on-click="q('next output').innerText = 'hi'">go</button><output></output>
+        </div>
+
+        <div class="test">
+            <h3>q('prev output') sets property on preceding element</h3>
+            <script>
+                test(async () => {
+                    find('button').click();
+                    assertEq(find('output').innerText, "yo");
+                })
+            </script>
+            <output></output><button on-click="q('prev output').innerText = 'yo'">go</button>
+        </div>
+
+        <div class="test">
+            <h3>q('closest form') walks up ancestors</h3>
+            <script>
+                test(async () => {
+                    find('button').click();
+                    assertEq(find('form').dataset.f, "ok");
+                })
+            </script>
+            <form data-f=""><button on-click.halt="q('closest form').dataset.f = 'ok'">go</button></form>
+        </div>
+
+        <div class="test">
+            <h3>q('first .r16') and q('last .r16')</h3>
+            <script>
+                test(async () => {
+                    find('button').click();
+                    let rs = currentTest.testElt.querySelectorAll('.r16');
+                    assertEq(rs[0].innerText, "A");
+                    assertEq(rs[1].innerText, "");
+                    assertEq(rs[2].innerText, "Z");
+                })
+            </script>
+            <button on-click="q('first .r16').innerText = 'A'; q('last .r16').innerText = 'Z'">go</button>
+            <p class="r16"></p><p class="r16"></p><p class="r16"></p>
+        </div>
+
+        <div class="test">
+            <h3>q('.all17') is document-scoped and applies to all matches</h3>
+            <script>
+                test(async () => {
+                    find('button').click();
+                    let ps = currentTest.testElt.querySelectorAll('.all17');
+                    assertEq(ps[0].innerText, "x");
+                    assertEq(ps[1].innerText, "x");
+                })
+            </script>
+            <button on-click="q('.all17').innerText = 'x'">go</button>
+            <p class="all17"></p><p class="all17"></p>
+        </div>
+
+        <div class="test">
+            <h3>q proxy invokes method on all matches</h3>
+            <script>
+                test(async () => {
+                    find('button').click();
+                    let bs = currentTest.testElt.querySelectorAll('.box18');
+                    assertEq(bs[0].dataset.k, "v");
+                    assertEq(bs[1].dataset.k, "v");
+                })
+            </script>
+            <button on-click="q('.box18').setAttribute('data-k', 'v')">go</button>
+            <i class="box18"></i><i class="box18"></i>
+        </div>
+
+        <div class="test">
+            <h3>q proxy recurses into object properties (classList.add)</h3>
+            <script>
+                test(async () => {
+                    find('button').click();
+                    let rows = currentTest.testElt.querySelectorAll('.row19');
+                    assertEq(rows[0].classList.contains('sel'), true);
+                    assertEq(rows[1].classList.contains('sel'), true);
+                })
+            </script>
+            <button on-click="q('.row19').classList.add('sel')">go</button>
+            <div class="row19"></div><div class="row19"></div>
+        </div>
+
+        <div class="test">
+            <h3>q proxy recurses into object property sets (style.color)</h3>
+            <script>
+                test(async () => {
+                    find('button').click();
+                    let rows = currentTest.testElt.querySelectorAll('.row20');
+                    assertEq(rows[0].style.color, "red");
+                    assertEq(rows[1].style.color, "red");
+                })
+            </script>
+            <button on-click="q('.row20').style.color = 'red'">go</button>
+            <div class="row20"></div><div class="row20"></div>
+        </div>
+
+        <div class="test">
+            <h3>q with no matches does not throw on set</h3>
+            <script>
+                test(async () => {
+                    let threw = false;
+                    try { find('button').click() } catch (e) { threw = true }
+                    assertEq(threw, false);
+                })
+            </script>
+            <button on-click="q('next output').innerText = 'x'">go</button>
+        </div>
+
+        <div class="test">
+            <h3>trigger(type, detail) bubbles a CustomEvent from this</h3>
+            <script>
+                test(async () => {
+                    window.__ts1 = null;
+                    find('button').click();
+                    assertEq(window.__ts1, 99);
+                })
+            </script>
+            <div on-pong="window.__ts1 = event.detail"><button on-click="trigger('pong', 99)">go</button></div>
+        </div>
+
+        <div class="test">
+            <h3>q(...).trigger() dispatches to every matched element</h3>
+            <script>
+                test(async () => {
+                    window.__ts2a = 0; window.__ts2b = 0;
+                    find('button').click();
+                    assertEq(window.__ts2a, 7);
+                    assertEq(window.__ts2b, 7);
+                })
+            </script>
+            <button on-click="q('.tg23').trigger('ping', 7)">go</button>
+            <div class="tg23" on-ping="window.__ts2a = (window.__ts2a || 0) + event.detail"></div>
+            <div class="tg23" on-ping="window.__ts2b = event.detail"></div>
+        </div>
+
+        <div class="test">
+            <h3>q('.x33 in this') scopes to this element's subtree</h3>
+            <script>
+                test(async () => {
+                    find('#host33').click();
+                    assertEq(find('#outer-x33').innerText, "");
+                    assertEq(find('#inner-x33').innerText, "IN");
+                })
+            </script>
+            <p class="x33" id="outer-x33"></p>
+            <div id="host33" on-click="q('.x33 in this').innerText = 'IN'">
+                <p class="x33" id="inner-x33"></p>
+            </div>
+        </div>
+
+        <div class="test">
+            <h3>q('.z34 in #bucket34') scopes to the named element</h3>
+            <script>
+                test(async () => {
+                    find('button').click();
+                    assertEq(find('#z-out').innerText, "");
+                    assertEq(find('#z-in').innerText, "B");
+                })
+            </script>
+            <p class="z34" id="z-out"></p>
+            <div id="bucket34"><p class="z34" id="z-in"></p></div>
+            <button on-click="q('.z34 in #bucket34').innerText = 'B'">go</button>
+        </div>
+
+        <div class="test">
+            <h3>q(...) is iterable (spread)</h3>
+            <script>
+                test(async () => {
+                    window.__it = null;
+                    find('button').click();
+                    assertEq(window.__it, "a,b,c");
+                })
+            </script>
+            <p class="it35">a</p><p class="it35">b</p><p class="it35">c</p>
+            <button on-click="window.__it = [...q('.it35')].map(e => e.innerText).join(',')">go</button>
+        </div>
+
+        <div class="test">
+            <h3>q(...) works with for..of</h3>
+            <script>
+                test(async () => {
+                    window.__fo = null;
+                    find('button').click();
+                    assertEq(window.__fo, 3);
+                })
+            </script>
+            <p class="fo36">1</p><p class="fo36">2</p>
+            <button on-click="let sum = 0; for (let e of q('.fo36')) sum += Number(e.innerText); window.__fo = sum">go</button>
+        </div>
+
+        <div class="test">
+            <h3>q(...).insert('end', html) appends parsed HTML</h3>
+            <script>
+                test(async () => {
+                    find('button').click();
+                    let list = find('#ins-list');
+                    assertEq(list.children.length, 2);
+                    assertEq(list.lastElementChild.className, "new");
+                })
+            </script>
+            <ul id="ins-list"><li>a</li></ul>
+            <button on-click="q('#ins-list').insert('end', '<li class=&quot;new&quot;>b</li>')">go</button>
+        </div>
+
+        <div class="test">
+            <h3>q(...).count returns number of matched elements</h3>
+            <script>
+                test(async () => {
+                    window.__cc = null;
+                    find('button').click();
+                    assertEq(window.__cc, 3);
+                })
+            </script>
+            <p class="ct38"></p><p class="ct38"></p><p class="ct38"></p>
+            <button on-click="window.__cc = q('.ct38').count">go</button>
+        </div>
+
+        <div class="test">
+            <h3>q(...).arr() returns matched elements as an array</h3>
+            <script>
+                test(async () => {
+                    window.__aa = null;
+                    find('button').click();
+                    if (!Array.isArray(window.__aa)) throw `expected array, got ${window.__aa}`;
+                    assertEq(window.__aa.length, 3);
+                    assertEq(window.__aa.filter(p => p.classList.contains('ct38a')).length, 3);
+                })
+            </script>
+            <p class="ct38a"></p><p class="ct38a"></p><p class="ct38a"></p>
+            <button on-click="window.__aa = q('.ct38a').arr()">go</button>
+        </div>
+
+        <div class="test">
+            <h3>q('first .k39 in #box39') combines direction with scope</h3>
+            <script>
+                test(async () => {
+                    find('button').click();
+                    assertEq(find('#k1').innerText, "a");
+                    assertEq(find('#k2').innerText, "F");
+                    assertEq(find('#k3').innerText, "c");
+                })
+            </script>
+            <p class="k39" id="k1">a</p>
+            <div id="box39">
+                <p class="k39" id="k2">b</p>
+                <p class="k39" id="k3">c</p>
+            </div>
+            <button on-click="q('first .k39 in #box39').innerText = 'F'">go</button>
+        </div>
+    </section>
+
+    <section id="helpers">
+        <h2>Scoped helpers</h2>
+
+        <div class="test">
+            <h3>await wait(ms) delays handler</h3>
+            <script>
+                test(async () => {
+                    window.__w1 = null;
+                    find('button').click();
+                    let snap = window.__w1;
+                    await sleep(60);
+                    assertEq(snap, "before");
+                    assertEq(window.__w1, "after");
+                })
+            </script>
+            <button on-click="window.__w1 = 'before'; await wait(30); window.__w1 = 'after'">go</button>
+        </div>
+
+        <div class="test">
+            <h3>await wait(eventName) resolves with the event</h3>
+            <script>
+                test(async () => {
+                    window.__w2 = null;
+                    let btn = find('button');
+                    btn.click();
+                    btn.dispatchEvent(new CustomEvent("pong", {detail: "ok"}));
+                    await sleep(30);
+                    assertEq(window.__w2, "ok");
+                })
+            </script>
+            <button on-click="let e = await wait('pong'); window.__w2 = e.detail">go</button>
+        </div>
+
+        <div class="test">
+            <h3>await debounce(ms) resolves after delay when not superseded</h3>
+            <script>
+                test(async () => {
+                    window.__db1 = 0;
+                    find('button').click();
+                    await sleep(80);
+                    assertEq(window.__db1, 1);
+                })
+            </script>
+            <button on-click="await debounce(40); window.__db1++">go</button>
+        </div>
+
+        <div class="test">
+            <h3>await debounce(ms) collapses rapid calls to one</h3>
+            <script>
+                test(async () => {
+                    window.__db2 = 0;
+                    let btn = find('button');
+                    btn.click(); btn.click(); btn.click();
+                    await sleep(80);
+                    assertEq(window.__db2, 1);
+                })
+            </script>
+            <button on-click="await debounce(40); window.__db2++">go</button>
+        </div>
+
+        <div class="test">
+            <h3>await debounce(ms): superseded calls do not leave unresolved promises</h3>
+            <script>
+                test(async () => {
+                    window.__dbStart = 0; window.__dbFinish = 0; window.__dbAbort = 0;
+                    let btn = find('button');
+                    btn.click(); btn.click(); btn.click();
+                    await sleep(80);
+                    // every handler invocation must finish (resolve or abort): no dangling
+                    // awaits on a debounce promise that never settles
+                    assertEq(window.__dbStart, 3);
+                    assertEq(window.__dbFinish, 1);
+                    assertEq(window.__dbAbort, 2);
+                })
+            </script>
+            <button on-click="
+                window.__dbStart++
+                try { await debounce(40); window.__dbFinish++ }
+                catch (e) { window.__dbAbort++ }
+            ">go</button>
+        </div>
+
+        <div class="test">
+            <h3>trigger(type, detail) helper dispatches from current element</h3>
+            <script>
+                test(async () => {
+                    let saw = null;
+                    find('#snd55').addEventListener("snd55", (e) => saw = e.detail);
+                    find('button').click();
+                    assertEq(saw, "hello");
+                })
+            </script>
+            <div id="snd55"><button on-click="trigger('snd55', 'hello')">go</button></div>
+        </div>
+
+        <div class="test">
+            <h3>take(cls, from, to) moves class between elements</h3>
+            <script>
+                test(async () => {
+                    find('button').click();
+                    assertEq(find('#t1').classList.contains('active'), false);
+                    assertEq(find('#t2').classList.contains('active'), true);
+                })
+            </script>
+            <div class="tab31 active" id="t1">a</div>
+            <div class="tab31" id="t2">b</div>
+            <button on-click="take('active', '.tab31', q('#t2'))">go</button>
+        </div>
+
+        <div class="test">
+            <h3>transition() invokes the callback</h3>
+            <script>
+                test(async () => {
+                    window.__tx = false;
+                    find('button').click();
+                    await sleep(30);
+                    assertEq(window.__tx, true);
+                })
+            </script>
+            <button on-click="transition(() => window.__tx = true)">go</button>
+        </div>
+    </section>
+
+    <section id="modifiers">
+        <h2>Event modifiers</h2>
+
+        <div class="test">
+            <h3>.prevent modifier calls preventDefault</h3>
+            <script>
+                test(async () => {
+                    window.__p1 = false;
+                    let btn = find('button');
+                    let prevented = false;
+                    btn.addEventListener("click", (e) => { prevented = e.defaultPrevented }, {once: true});
+                    btn.click();
+                    assertEq(window.__p1, true);
+                    assertEq(prevented, true);
+                })
+            </script>
+            <button on-click.prevent="window.__p1 = true">go</button>
+        </div>
+
+        <div class="test">
+            <h3>.stop modifier blocks bubbling</h3>
+            <script>
+                test(async () => {
+                    window.__so = false; window.__si = false;
+                    find('button').click();
+                    assertEq(window.__si, true);
+                    assertEq(window.__so, false);
+                })
+            </script>
+            <div on-click="window.__so = true">
+                <button on-click.stop="window.__si = true">go</button>
+            </div>
+        </div>
+
+        <div class="test">
+            <h3>.prevent.stop applies both modifiers</h3>
+            <script>
+                test(async () => {
+                    window.__oc = false;
+                    let btn = find('button');
+                    let prevented = false;
+                    btn.addEventListener("click", (e) => { prevented = e.defaultPrevented }, {once: true});
+                    btn.click();
+                    assertEq(prevented, true);
+                    assertEq(window.__oc, false);
+                })
+            </script>
+            <div on-click="window.__oc = true">
+                <button on-click.prevent.stop="">go</button>
+            </div>
+        </div>
+
+        <div class="test">
+            <h3>.halt modifier prevents default and stops propagation</h3>
+            <script>
+                test(async () => {
+                    window.__h1 = false; window.__ho = false;
+                    let btn = find('button');
+                    let prevented = false;
+                    btn.addEventListener("click", (e) => { prevented = e.defaultPrevented }, {once: true});
+                    btn.click();
+                    assertEq(window.__h1, true);
+                    assertEq(window.__ho, false);
+                    assertEq(prevented, true);
+                })
+            </script>
+            <div on-click="window.__ho = true">
+                <button on-click.halt="window.__h1 = true">go</button>
+            </div>
+        </div>
+
+        <div class="test">
+            <h3>.once modifier: handler fires only once</h3>
+            <script>
+                test(async () => {
+                    window.__oc1 = 0;
+                    let btn = find('button');
+                    btn.click(); btn.click(); btn.click();
+                    assertEq(window.__oc1, 1);
+                })
+            </script>
+            <button on-click.once="window.__oc1++">go</button>
+        </div>
+
+        <div class="test">
+            <h3>.self modifier ignores bubbled events from children</h3>
+            <script>
+                test(async () => {
+                    window.__sf1 = 0;
+                    find('button').click();
+                    assertEq(window.__sf1, 0);
+                })
+            </script>
+            <div id="sfd" on-click.self="window.__sf1++"><button>child</button></div>
+        </div>
+
+        <div class="test">
+            <h3>.self modifier fires when event.target is this</h3>
+            <script>
+                test(async () => {
+                    window.__sf2 = 0;
+                    find('#sfd2').click();
+                    assertEq(window.__sf2, 1);
+                })
+            </script>
+            <div id="sfd2" on-click.self="window.__sf2++"></div>
+        </div>
+
+        <div class="test">
+            <h3>.capture modifier fires during capture phase (outer before inner)</h3>
+            <script>
+                test(async () => {
+                    window.__cap = [];
+                    find('button').click();
+                    assertEq(window.__cap[0], "div");
+                    assertEq(window.__cap[1], "btn");
+                })
+            </script>
+            <div on-click.capture="window.__cap.push('div')">
+                <button on-click="window.__cap.push('btn')">go</button>
+            </div>
+        </div>
+
+        <div class="test">
+            <h3>.passive modifier: handler still binds and fires</h3>
+            <script>
+                test(async () => {
+                    window.__pv = 0;
+                    find('button').click();
+                    assertEq(window.__pv, 1);
+                })
+            </script>
+            <button on-click.passive="window.__pv++">go</button>
+        </div>
+
+        <div class="test">
+            <h3>.outside modifier ignores clicks inside the element</h3>
+            <script>
+                test(async () => {
+                    window.__ous1 = 0;
+                    find('#oud1').click();
+                    assertEq(window.__ous1, 0);
+                })
+            </script>
+            <div id="oud1" on-click.outside="window.__ous1++">panel</div>
+        </div>
+
+        <div class="test">
+            <h3>.outside modifier fires for clicks outside the element</h3>
+            <script>
+                test(async () => {
+                    window.__ous2 = 0;
+                    let spy = document.createElement("span");
+                    document.body.appendChild(spy);
+                    spy.click();
+                    document.body.removeChild(spy);
+                    assertEq(window.__ous2, 1);
+                })
+            </script>
+            <div id="oud2" on-click.outside="window.__ous2++">panel</div>
+        </div>
+    </section>
+
+    <section id="live">
+        <h2>live expressions</h2>
+
+        <div class="test">
+            <h3>live evaluates once at bind time</h3>
+            <script>
+                test(async () => {
+                    await sleep(30);
+                    assertEq(find('#lo1').innerText, "hi");
+                })
+            </script>
+            <input id="ln1" value="hi">
+            <output id="lo1" live="this.innerText = q('#ln1').value"></output>
+        </div>
+
+        <div class="test">
+            <h3>live re-evaluates on input event</h3>
+            <script>
+                test(async () => {
+                    let input = find('#ln2');
+                    input.value = "typed";
+                    input.dispatchEvent(new Event("input", {bubbles: true}));
+                    await sleep(30);
+                    assertEq(find('#lo2').innerText, "typed");
+                })
+            </script>
+            <input id="ln2">
+            <output id="lo2" live="this.innerText = q('#ln2').value"></output>
+        </div>
+
+        <div class="test">
+            <h3>live re-evaluates on childList mutation</h3>
+            <script>
+                test(async () => {
+                    find('#ll3').innerHTML = "<li>a</li><li>b</li><li>c</li>";
+                    await sleep(30);
+                    assertEq(find('#lo3').innerText, "3");
+                })
+            </script>
+            <ul id="ll3"></ul>
+            <output id="lo3" live="this.innerText = q('#ll3 li').count"></output>
+        </div>
+
+        <div class="test">
+            <h3>live re-evaluates on attribute mutation</h3>
+            <script>
+                test(async () => {
+                    find('#ls4').dataset.x = "two";
+                    await sleep(30);
+                    assertEq(find('#lo4').innerText, "two");
+                })
+            </script>
+            <div id="ls4" data-x="one"></div>
+            <output id="lo4" live="this.innerText = q('#ls4').dataset.x"></output>
+        </div>
+
+        <div class="test">
+            <h3>live self-mutation settles without infinite loop</h3>
+            <script>
+                test(async () => {
+                    window.__lc = 0;
+                    currentTest.testElt.insertAdjacentHTML('beforeend', `<output id="lo5" live="this.innerText = String(++window.__lc)"></output>`);
+                    await sleep(100);
+                    if (!(window.__lc > 0 && window.__lc < 10)) throw `expected small count, got ${window.__lc}`;
+                })
+            </script>
+        </div>
+
+        <div class="test">
+            <h3>disconnected live expressions stop running</h3>
+            <script>
+                test(async () => {
+                    window.__lc6 = 0;
+                    currentTest.testElt.insertAdjacentHTML('beforeend', `<output id="lo6" live="window.__lc6++; this.innerText = String(window.__lc6)"></output>`);
+                    await sleep(50);
+                    find('#lo6').remove();
+                    await sleep(50);
+                    let frozen = window.__lc6;
+                    document.body.appendChild(document.createElement("span"));
+                    await sleep(50);
+                    assertEq(window.__lc6, frozen);
+                })
+            </script>
+        </div>
+    </section>
+
+</main>
+
+</body>
+</html>

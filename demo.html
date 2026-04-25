@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>moxi.js demo</title>
+<style>
+	:root {
+		--fg: #1a1a1a;
+		--muted: #666;
+		--bg: #fafafa;
+		--card: #fff;
+		--border: #e0e0e0;
+		--accent: #2563eb;
+		--accent-bg: #dbeafe;
+		--code-bg: #f4f4f5;
+	}
+	* { box-sizing: border-box; }
+	body {
+		font: 15px/1.5 -apple-system, BlinkMacSystemFont, sans-serif;
+		color: var(--fg);
+		background: var(--bg);
+		max-width: 780px;
+		margin: 2em auto;
+		padding: 0 1em;
+	}
+	h1 { font-weight: 700; margin-bottom: 0.2em; }
+	h1 small { color: var(--muted); font-weight: 400; font-size: 0.6em; }
+	h2 { margin-top: 2em; font-size: 1.15em; border-bottom: 1px solid var(--border); padding-bottom: 0.3em; }
+	.intro { color: var(--muted); }
+	.demo {
+		background: var(--card);
+		border: 1px solid var(--border);
+		border-radius: 6px;
+		padding: 1em 1.2em;
+		margin: 1em 0;
+	}
+	.demo .play { margin-bottom: 0.8em; }
+	.demo pre {
+		background: var(--code-bg);
+		padding: 0.7em 0.9em;
+		border-radius: 4px;
+		font-size: 13px;
+		overflow-x: auto;
+		margin: 0;
+	}
+	button, input[type=button] {
+		background: var(--accent);
+		color: #fff;
+		border: 0;
+		border-radius: 4px;
+		padding: 0.4em 0.9em;
+		font: inherit;
+		cursor: pointer;
+	}
+	button:hover { filter: brightness(1.1); }
+	button:disabled { opacity: 0.4; cursor: not-allowed; filter: none; }
+	input[type=text], input[type=search], input[type=email] {
+		border: 1px solid var(--border);
+		border-radius: 4px;
+		padding: 0.4em 0.6em;
+		font: inherit;
+		min-width: 200px;
+	}
+	output { font-family: ui-monospace, monospace; color: var(--accent); }
+	.tab {
+		background: var(--card);
+		color: var(--fg);
+		border: 1px solid var(--border);
+		margin-right: 0.3em;
+	}
+	.tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+	#panel {
+		background: var(--accent-bg);
+		padding: 1em;
+		margin-top: 0.8em;
+		border-radius: 4px;
+		max-height: 0;
+		overflow: hidden;
+		transition: max-height 0.25s ease;
+	}
+	#panel.open { max-height: 200px; }
+	#menu {
+		background: var(--card);
+		border: 1px solid var(--border);
+		border-radius: 4px;
+		padding: 0.8em;
+		margin-top: 0.5em;
+		display: inline-block;
+	}
+	#menu[hidden] { display: none; }
+	::view-transition-old(panel),
+	::view-transition-new(panel) { animation-duration: 0.25s; }
+	.demo code { background: var(--code-bg); padding: 1px 5px; border-radius: 3px; font-size: 90%; }
+</style>
+</head>
+<body>
+
+<h1>&#x1F94A; moxi.js <small>demo</small></h1>
+<p class="intro">Play with these in your browser. View the source (or just click each box) to see how each example is wired up — it's all inline.</p>
+
+<h2>1. Reactive output</h2>
+<div class="demo">
+	<div class="play">
+		<input id="name" placeholder="type your name">
+		<output live="this.innerText = q('#name').value ? 'hello ' + q('#name').value : ''"></output>
+	</div>
+<pre>&lt;input id="name" placeholder="type your name"&gt;
+&lt;output live="this.innerText = q('#name').value ? 'hello ' + q('#name').value : ''"&gt;&lt;/output&gt;</pre>
+</div>
+
+<h2>2. Counter with per-element state</h2>
+<div class="demo">
+	<div class="play">
+		<button on-init="this.count = 0"
+		        on-click="this.count++; q('next output').value = this.count">click me</button>
+		<output>0</output>
+	</div>
+<pre>&lt;button on-init="this.count = 0"
+        on-click="this.count++; q('next output').value = this.count"&gt;click me&lt;/button&gt;
+&lt;output&gt;0&lt;/output&gt;</pre>
+</div>
+
+<h2>3. Active tab with <code>take()</code></h2>
+<div class="demo">
+	<div class="play">
+		<button class="tab active" on-click="take('active', '.tab', this); q('#tab-out').innerText = this.innerText">One</button>
+		<button class="tab"        on-click="take('active', '.tab', this); q('#tab-out').innerText = this.innerText">Two</button>
+		<button class="tab"        on-click="take('active', '.tab', this); q('#tab-out').innerText = this.innerText">Three</button>
+		<p>selected: <output id="tab-out">One</output></p>
+	</div>
+<pre>&lt;button class="tab active" on-click="take('active', '.tab', this); ..."&gt;One&lt;/button&gt;
+&lt;button class="tab"        on-click="take('active', '.tab', this); ..."&gt;Two&lt;/button&gt;
+&lt;button class="tab"        on-click="take('active', '.tab', this); ..."&gt;Three&lt;/button&gt;</pre>
+</div>
+
+<h2>4. Debounced search</h2>
+<div class="demo">
+	<div class="play">
+		<input type="search" id="q"
+		       on-input="await debounce(250); q('next output').innerText = this.value ? 'searching: ' + this.value : ''">
+		<output></output>
+	</div>
+<pre>&lt;input type="search" on-input="await debounce(250); q('next output').innerText = 'searching: ' + this.value"&gt;</pre>
+	<p style="color:var(--muted);font-size:13px;margin:0.4em 0 0">Only the latest keystroke after a 250ms pause produces an update.</p>
+</div>
+
+<h2>5. View transition on toggle</h2>
+<div class="demo">
+	<div class="play">
+		<button on-click="transition(() => q('#panel').classList.toggle('open'))">toggle panel</button>
+		<div id="panel" style="view-transition-name: panel">
+			The panel slides open and closed, animated by the browser's View Transition API when available.
+		</div>
+	</div>
+<pre>&lt;button on-click="transition(() =&gt; q('#panel').classList.toggle('open'))"&gt;toggle&lt;/button&gt;
+&lt;div id="panel"&gt;...&lt;/div&gt;</pre>
+</div>
+
+<h2>6. Click-outside-to-dismiss</h2>
+<div class="demo">
+	<div class="play">
+		<button on-click.stop="q('#menu').hidden = false">open menu</button>
+		<div id="menu" hidden on-click.outside="this.hidden = true">
+			<em>Click outside this menu to dismiss it.</em>
+		</div>
+	</div>
+<pre>&lt;button on-click.stop="q('#menu').hidden = false"&gt;open menu&lt;/button&gt;
+&lt;div id="menu" hidden on-click.outside="this.hidden = true"&gt;...&lt;/div&gt;</pre>
+	<p style="color:var(--muted);font-size:13px;margin:0.4em 0 0"><code>.stop</code> on the opener keeps the same click from bubbling to the <code>.outside</code> listener, which would otherwise dismiss the menu immediately.</p>
+</div>
+
+<h2>7. Parent listens for child emits</h2>
+<div class="demo">
+	<div class="play">
+		<div on-confirm="q('.result in this').innerText = 'got: ' + event.detail">
+			<button on-click="trigger('confirm', 'yes')">yes</button>
+			<button on-click="trigger('confirm', 'no')">no</button>
+			<p class="result" style="margin-top:0.5em;color:var(--muted)"></p>
+		</div>
+	</div>
+<pre>&lt;div on-confirm="q('.result in this').innerText = 'got: ' + event.detail"&gt;
+  &lt;button on-click="trigger('confirm', 'yes')"&gt;yes&lt;/button&gt;
+  &lt;button on-click="trigger('confirm', 'no')"&gt;no&lt;/button&gt;
+  &lt;p class="result"&gt;&lt;/p&gt;
+&lt;/div&gt;</pre>
+</div>
+
+<h2>8. Live count of a dynamic list</h2>
+<div class="demo">
+	<div class="play">
+		<button on-click="q('#items').insert('end', `<li class='item'>item ${q('.item').count + 1}</li>`)">add item</button>
+		<button on-click="q('#items').lastElementChild?.remove()">remove last</button>
+		<p><output live="this.innerText = q('.item').count + ' items'"></output></p>
+		<ul id="items">
+			<li class="item">item 1</li>
+			<li class="item">item 2</li>
+		</ul>
+	</div>
+<pre>&lt;button on-click="q('#items').insert('end', `&lt;li class='item'&gt;item ${q('.item').count + 1}&lt;/li&gt;`)"&gt;add item&lt;/button&gt;
+&lt;output live="this.innerText = q('.item').count + ' items'"&gt;&lt;/output&gt;
+&lt;ul id="items"&gt;
+  &lt;li class="item"&gt;item 1&lt;/li&gt;
+  &lt;li class="item"&gt;item 2&lt;/li&gt;
+&lt;/ul&gt;</pre>
+	<p style="color:var(--muted);font-size:13px;margin:0.4em 0 0">The count watches <code>.item</code>, so new items need the same class.</p>
+</div>
+
+<h2>9. Form validity driving a button</h2>
+<div class="demo">
+	<div class="play">
+		<form id="signup" onsubmit="event.preventDefault(); alert('submitted!')">
+			<input type="email" required placeholder="email">
+			<input type="text" required minlength="3" placeholder="username (3+ chars)">
+			<button live="this.disabled = !q('#signup').checkValidity()">submit</button>
+		</form>
+	</div>
+<pre>&lt;form id="signup"&gt;
+  &lt;input type="email" required placeholder="email"&gt;
+  &lt;input type="text" required minlength="3" placeholder="username"&gt;
+  &lt;button live="this.disabled = !q('#signup').checkValidity()"&gt;submit&lt;/button&gt;
+&lt;/form&gt;</pre>
+</div>
+
+<h2>10. <code>.halt</code> on a form submit</h2>
+<div class="demo">
+	<div class="play">
+		<form on-submit.halt="q('next output').innerText = 'caught: ' + new FormData(this).get('q')">
+			<input name="q" type="text" placeholder="type and press enter">
+			<button type="submit">submit</button>
+		</form>
+		<output></output>
+	</div>
+<pre>&lt;form on-submit.halt="q('next output').innerText = 'caught: ' + new FormData(this).get('q')"&gt;
+  &lt;input name="q" placeholder="type and press enter"&gt;
+  &lt;button type="submit"&gt;submit&lt;/button&gt;
+&lt;/form&gt;</pre>
+</div>
+
+<script src="moxi.js"></script>
+</body>
+</html>
