@@ -9,12 +9,12 @@ fi
 
 VERSION="$1"
 
-echo "Releasing moxi-js v${VERSION}..."
+echo "Releasing @bigskysoftware/moxi-js v${VERSION}..."
 
 # Generate package.json
 cat > package.json <<EOF
 {
-  "name": "moxi-js",
+  "name": "@bigskysoftware/moxi-js",
   "version": "${VERSION}",
   "description": "moxi.js - A Small Inline Scripting Companion for fixi.js",
   "main": "moxi.js",
@@ -51,4 +51,4 @@ npm publish --access public
 # Clean up
 rm package.json
 
-echo "Published moxi-js@${VERSION} to npm"
+echo "Published @bigskysoftware/moxi-js@${VERSION} to npm"
