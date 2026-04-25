@@ -71,6 +71,7 @@
 			} else if (a.name.startsWith(PREFIX)){
 				let [name, ...mods] = a.name.slice(3).split(".")
 				let has = (m)=>mods.includes(m), h = has("halt"), debounce = mkDb()
+				if (has("cc")) name = name.replace(/-([a-z])/g, (_,c)=>c.toUpperCase())
 				let target = has("outside") ? doc : elt
 				let opts = {capture: has("capture"), passive: has("passive")}
 				let fn = new AF("event", ...HARGS, `with(event?.detail||{}){${a.value}}`)

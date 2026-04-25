@@ -213,6 +213,36 @@
         </div>
 
         <div class="test">
+            <h3>.cc modifier converts kebab-case attribute name to camelCase event</h3>
+            <script>
+                test(async () => {
+                    window.__cc1 = 0
+                    // attribute is on-my-custom-event.cc, lowercased by HTML to on-my-custom-event.cc
+                    // .cc modifier collapses hyphens -> myCustomEvent
+                    find('#cc1').dispatchEvent(new CustomEvent("myCustomEvent", {bubbles: true}))
+                    // dispatch the lowercase form too: should NOT fire (proves we listen for the camel form)
+                    find('#cc1').dispatchEvent(new CustomEvent("my-custom-event", {bubbles: true}))
+                    assertEq(window.__cc1, 1)
+                })
+            </script>
+            <div id="cc1" on-my-custom-event.cc="window.__cc1++">x</div>
+        </div>
+
+        <div class="test">
+            <h3>without .cc, kebab-case attribute names listen for kebab-case events</h3>
+            <script>
+                test(async () => {
+                    window.__cc2 = 0
+                    find('#cc2').dispatchEvent(new CustomEvent("my-custom-event", {bubbles: true}))
+                    find('#cc2').dispatchEvent(new CustomEvent("myCustomEvent", {bubbles: true}))
+                    // only the kebab form should match
+                    assertEq(window.__cc2, 1)
+                })
+            </script>
+            <div id="cc2" on-my-custom-event="window.__cc2++">x</div>
+        </div>
+
+        <div class="test">
             <h3>event.detail keys are exposed as bare names inside the handler</h3>
             <script>
                 test(async () => {

@@ -146,6 +146,7 @@ before the body runs.
 <tr><td><code>.capture</code></td><td>Passes <code>{capture: true}</code> to <code>addEventListener</code>.</td></tr>
 <tr><td><code>.passive</code></td><td>Passes <code>{passive: true}</code> to <code>addEventListener</code>. Required for smooth scroll/touch handlers.</td></tr>
 <tr><td><code>.outside</code></td><td>Attaches the listener to <code>document</code> instead of <code>this</code>, and only fires when the event happened outside the element. Useful for dismissing menus and modals.</td></tr>
+<tr><td><code>.cc</code></td><td>Camel-cases the event name. <code>on-my-event.cc</code> listens for <code>myEvent</code>. Useful when consuming custom events from libraries or web components that dispatch camelCase names, since HTML attribute names are lowercased by the parser and can't otherwise express mixed case.</td></tr>
 </tbody>
 </table>
 
