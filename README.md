@@ -1,4 +1,4 @@
-<h1>&#x1F94A; moxi.js - <i>just a little nerve...</i></h1>
+<h1>&#x1F94A; moxi.js - <i>just a bit more...</i></h1>
 
 moxi.js is an experimental, minimalist companion to [fixi.js](https://github.com/bigskysoftware/fixi) that
 lets you put small bits of behavior directly on HTML elements: event handlers, reactive
@@ -191,7 +191,7 @@ you can drop the `event.detail.` prefix and write
 <button on-fx:config="cfg.confirm = () => confirm('Delete?')">delete</button>
 ```
 
-Reads, mutations (`cfg.foo = …`), and even reassignments (`cfg = {…}`) all hit the
+Reads, mutations (`cfg.foo = ...`), and even reassignments (`cfg = {...}`) all hit the
 underlying `event.detail` object. If a handler updates `cfg.confirm` inside an
 `fx:config` listener, fixi sees the change. This is implemented with a `with` block
 around the handler body, so:
@@ -199,7 +199,7 @@ around the handler body, so:
 * If `event.detail` is missing or null (e.g., a plain non-`CustomEvent`), nothing
   is injected and the handler still runs.
 * Names that aren't on `event.detail` resolve normally to the helpers above
-  (`q`, `trigger`, `wait`, …) or to globals.
+  (`q`, `trigger`, `wait`, ...) or to globals.
 * Assignments to a name that *isn't* already a property of `event.detail` fall
   through to the outer scope, so they don't accidentally pollute `detail`.
 
