@@ -235,6 +235,81 @@
 &lt;/form&gt;</pre>
 </div>
 
+<h2>11. Pairing with fixi: inject <code>confirm()</code> on a delete</h2>
+<div class="demo">
+	<div class="play">
+		<button fx-action="/things/42" fx-method="DELETE" fx-swap="none"
+		        on-fx:config="cfg.confirm = () => confirm('Delete this thing?')">
+			delete thing
+		</button>
+	</div>
+<pre>&lt;button fx-action="/things/42" fx-method="DELETE"
+        on-fx:config="cfg.confirm = () =&gt; confirm('Delete this thing?')"&gt;
+  delete thing
+&lt;/button&gt;</pre>
+	<p style="color:var(--muted);font-size:13px;margin:0.4em 0 0">moxi sets <code>cfg.confirm</code> on fixi's request config (via the bare-name <code>cfg</code> exposed by moxi); fixi pauses to call it before issuing the request.</p>
+</div>
+
+<h2>12. Pairing with fixi: react to <code>fx:after</code></h2>
+<div class="demo">
+	<section id="afterdemo" style="padding:0.5em;border:1px dashed var(--border);border-radius:4px;transition:background-color 0.3s">
+		<button fx-action="/data" fx-target="#after-out" fx-swap="innerHTML"
+		        on-fx:after="q('closest section').style.background = '#dcfce7'">
+			fetch into the panel
+		</button>
+		<div id="after-out" style="margin-top:0.5em;color:var(--muted)">(empty)</div>
+	</section>
+<pre>&lt;section&gt;
+  &lt;button fx-action="/data" fx-target="#out" fx-swap="innerHTML"
+          on-fx:after="q('closest section').style.background = '#dcfce7'"&gt;
+    fetch
+  &lt;/button&gt;
+  &lt;div id="out"&gt;&lt;/div&gt;
+&lt;/section&gt;</pre>
+	<p style="color:var(--muted);font-size:13px;margin:0.4em 0 0">After fixi swaps the response into the target, moxi's <code>on-fx:after</code> handler runs and tints the surrounding section. The <code>q('closest section')</code> walks up to the nearest enclosing <code>&lt;section&gt;</code>.</p>
+</div>
+
+<h2>13. Pairing with fixi: trigger a fixi request from moxi</h2>
+<div class="demo">
+	<div class="play">
+		<button on-click="q('#refresh-target').trigger('refresh')">reload</button>
+		<div id="refresh-target" fx-action="/data" fx-trigger="refresh" fx-swap="innerHTML"
+		     style="margin-top:0.5em;padding:0.4em;border:1px dashed var(--border);border-radius:4px;color:var(--muted)">
+			click reload to populate
+		</div>
+	</div>
+<pre>&lt;button on-click="q('#target').trigger('refresh')"&gt;reload&lt;/button&gt;
+&lt;div id="target" fx-action="/data" fx-trigger="refresh"&gt;...&lt;/div&gt;</pre>
+	<p style="color:var(--muted);font-size:13px;margin:0.4em 0 0">moxi fires a custom <code>refresh</code> event from the target; fixi's <code>fx-trigger="refresh"</code> picks it up and issues the request.</p>
+</div>
+
+<h2>14. Refresh <code>live</code> from outside the DOM</h2>
+<div class="demo">
+	<div class="play">
+		<button on-init="this.n = 0"
+		        on-click="this.n++; trigger('refresh')">click</button>
+		<output live="this.innerText = q('prev button').n + ' clicks'"></output>
+	</div>
+<pre>&lt;button on-init="this.n = 0"
+        on-click="this.n++; trigger('refresh')"&gt;click&lt;/button&gt;
+&lt;output live="this.innerText = q('prev button').n + ' clicks'"&gt;&lt;/output&gt;</pre>
+	<p style="color:var(--muted);font-size:13px;margin:0.4em 0 0">moxi recomputes <code>live</code> blocks on DOM input/change/mutation. For state changes that don't touch the DOM (here, a JS property on the button), dispatch a <code>refresh</code> event from anywhere to re-run all live blocks.</p>
+</div>
+
 <script src="moxi.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fixi-js@0.9.4/fixi.js"
+        integrity="sha256-rPuE58bCyMrZ37o4bByX4epgBA1bAeTylp7TxOXVh90="
+        crossorigin="anonymous"></script>
+<script>
+    // Mock fixi's fetch so the fixi-paired demos (sections 11-13) show observable
+    // behavior without needing a server. Real apps don't do this — fixi's default
+    // fetch hits the URL named by fx-action.
+    document.addEventListener('fx:config', (e) => {
+        e.detail.cfg.fetch = () => Promise.resolve(new Response(
+            '<em style="color:#16a34a">(mock response from ' + e.detail.cfg.action + ')</em>',
+            {status: 200, headers: {'Content-Type': 'text/html'}}
+        ))
+    })
+</script>
 </body>
 </html>

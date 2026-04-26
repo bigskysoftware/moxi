@@ -10,8 +10,8 @@ Where fixi handles the network and swapping, moxi handles local interactivity. T
 designed to be used together, but moxi has no dependency on fixi and works perfectly well on
 its own.
 
-The moxi api consists of three [attributes](#attributes), eight [event modifiers](#event-modifiers),
-seven [handler helpers](#handler-scope), and three [lifecycle events](#events).
+The moxi api consists of three [attributes](#attributes), nine [event modifiers](#event-modifiers),
+seven [handler helpers](#handler-scope), and four [events](#events).
 
 Here is an example:
 
@@ -165,8 +165,8 @@ Inside every `on-*` and `live` expression, moxi injects the following variables:
 <tbody>
 <tr><td><code>this</code></td><td><code>Element</code></td><td>The element the attribute is on.</td></tr>
 <tr><td><code>event</code></td><td><code>Event</code></td><td>Available in <code>on-*</code> handlers; undefined for <code>on-init</code> and <code>live</code>.</td></tr>
-<tr><td><code>q(sel)</code></td><td>fn -> proxy</td><td>Query helper. See <a href="#the-q-helper">The <code>q()</code> Helper</a> below.</td></tr>
-<tr><td><code>trigger(type, detail)</code></td><td>fn</td><td>Dispatches a bubbling, cancelable <code>CustomEvent</code> from <code>this</code>.</td></tr>
+<tr><td><code>q(x)</code></td><td>fn -> proxy</td><td>Query helper. <code>x</code> can be a selector string, a single element, or any iterable of elements. See <a href="#the-q-helper">The <code>q()</code> Helper</a> below.</td></tr>
+<tr><td><code>trigger(type, detail, bubbles)</code></td><td>fn</td><td>Dispatches a cancelable <code>CustomEvent</code> from <code>this</code>. <code>bubbles</code> defaults to <code>true</code>; pass <code>false</code> for a non-bubbling event.</td></tr>
 <tr><td><code>wait(x)</code></td><td>fn -> Promise</td><td><code>x</code> can be a number (ms delay) or a string (event name, resolves with the event object).</td></tr>
 <tr><td><code>debounce(ms)</code></td><td>fn -> Promise</td><td>Per-handler debouncer - superseded calls never resolve. Use with <code>await</code>.</td></tr>
 <tr><td><code>transition(fn)</code></td><td>fn</td><td>Wraps <code>fn</code> in <code>document.startViewTransition()</code>, with a fallback if unsupported.</td></tr>
@@ -206,7 +206,9 @@ around the handler body, so:
 
 ### The `q()` Helper
 
-`q(selector)` returns a proxy over matched elements. The selector grammar is:
+`q(x)` returns a proxy over matched elements. `x` is most often a selector string, but
+can also be a single `Element` (wrapped) or any iterable of elements (e.g. a `NodeList`
+or `Array`). When given a string, the grammar is:
 
 ```
 [<direction> ]<css-selector>[ in (this | <scope-selector>)]
@@ -256,7 +258,7 @@ every matched element:
 <tr><td><code>q(...).prop</code> (primitive or function)</td><td>Returns the value from the first match.</td></tr>
 <tr><td><code>q(...).count</code></td><td>Returns the number of matched elements.</td></tr>
 <tr><td><code>q(...).arr()</code></td><td>Returns the matched elements as a plain <code>Array</code>, so you can chain <code>.filter()</code>, <code>.map()</code>, etc. without spreading.</td></tr>
-<tr><td><code>q(...).trigger(type, detail)</code></td><td>Dispatches the event from every matched element.</td></tr>
+<tr><td><code>q(...).trigger(type, detail, bubbles)</code></td><td>Dispatches the event from every matched element. <code>bubbles</code> defaults to <code>true</code>.</td></tr>
 <tr><td><code>q(...).insert(pos, html)</code></td><td>Parses <code>html</code> and inserts it at every matched element. <code>pos</code> is one of <code>'before' | 'start' | 'end' | 'after'</code> - a friendlier spelling of the four <code>insertAdjacentHTML</code> positions.</td></tr>
 <tr><td><code>for (let e of q(...))</code> / <code>[...q(...)]</code></td><td>Iterates over the raw matched elements.</td></tr>
 </tbody>
@@ -286,6 +288,10 @@ on the `document` for global hooks.
 <tr>
   <td><code>mx:process</code></td>
   <td>moxi listens for this event on the <code>document</code> and will process the <code>evt.target</code> and its descendants. Dispatch this to force re-scanning after manual DOM changes.</td>
+</tr>
+<tr>
+  <td><code>refresh</code></td>
+  <td>moxi listens for this bubbling event on the <code>document</code> and re-runs every <code>live</code> expression. Dispatch it (e.g. via <code>trigger('refresh')</code> or <code>document.dispatchEvent(new Event('refresh'))</code>) when state outside the DOM changes and you want live blocks to recompute.</td>
 </tr>
 </tbody>
 </table>
@@ -430,25 +436,6 @@ or trigger a fixi request from a moxi handler via `trigger`:
   <button on-click="trigger('confirm', 'yes')">yes</button>
   <button on-click="trigger('confirm', 'no')">no</button>
 </dialog>
-```
-
-## Extensions
-
-Because moxi ships no public JS API beyond its scope helpers and lifecycle events, extensions
-are mostly a matter of hanging additional behavior off the `mx:init` and `mx:inited` events.
-A suggested convention when adding moxi extension attributes is to use the `ext-mx` prefix:
-
-```js
-// ext-mx-log: logs every time the element receives focus
-document.addEventListener("mx:inited", (evt) => {
-  if (evt.target.hasAttribute("ext-mx-log")) {
-    evt.target.addEventListener("focus", () => console.log("focused:", evt.target))
-  }
-})
-```
-
-```html
-<input ext-mx-log placeholder="focus me">
 ```
 
 ## LICENCE
