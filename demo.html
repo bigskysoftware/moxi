@@ -122,14 +122,14 @@
 <h2>3. Active tab with <code>take()</code></h2>
 <div class="demo">
 	<div class="play">
-		<button class="tab active" on-click="take('active', '.tab', this); q('#tab-out').innerText = this.innerText">One</button>
-		<button class="tab"        on-click="take('active', '.tab', this); q('#tab-out').innerText = this.innerText">Two</button>
-		<button class="tab"        on-click="take('active', '.tab', this); q('#tab-out').innerText = this.innerText">Three</button>
+		<button class="tab active" on-click="q(this).take('active', '.tab'); q('#tab-out').innerText = this.innerText">One</button>
+		<button class="tab"        on-click="q(this).take('active', '.tab'); q('#tab-out').innerText = this.innerText">Two</button>
+		<button class="tab"        on-click="q(this).take('active', '.tab'); q('#tab-out').innerText = this.innerText">Three</button>
 		<p>selected: <output id="tab-out">One</output></p>
 	</div>
-<pre>&lt;button class="tab active" on-click="take('active', '.tab', this); ..."&gt;One&lt;/button&gt;
-&lt;button class="tab"        on-click="take('active', '.tab', this); ..."&gt;Two&lt;/button&gt;
-&lt;button class="tab"        on-click="take('active', '.tab', this); ..."&gt;Three&lt;/button&gt;</pre>
+<pre>&lt;button class="tab active" on-click="q(this).take('active', '.tab'); ..."&gt;One&lt;/button&gt;
+&lt;button class="tab"        on-click="q(this).take('active', '.tab'); ..."&gt;Two&lt;/button&gt;
+&lt;button class="tab"        on-click="q(this).take('active', '.tab'); ..."&gt;Three&lt;/button&gt;</pre>
 </div>
 
 <h2>4. Debounced search</h2>

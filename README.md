@@ -11,7 +11,7 @@ designed to be used together, but moxi has no dependency on fixi and works perfe
 its own.
 
 The moxi api consists of three [attributes](#attributes), nine [event modifiers](#event-modifiers),
-seven [handler helpers](#handler-scope), and four [events](#events).
+three [globals plus a handler scope](#scope), and four [events](#events).
 
 Here is an example:
 
@@ -150,9 +150,26 @@ before the body runs.
 </tbody>
 </table>
 
-### Handler Scope
+### Scope
 
-Inside every `on-*` and `live` expression, moxi injects the following variables:
+moxi exposes three helpers on `globalThis`:
+
+<table>
+<thead>
+<tr>
+  <th>name</th>
+  <th>type</th>
+  <th>description</th>
+</tr>
+</thead>
+<tbody>
+<tr><td><code>q(x)</code></td><td>fn -> proxy</td><td>Query helper. <code>x</code> can be a selector string, a single element, or any iterable of elements. See <a href="#the-q-helper">The <code>q()</code> Helper</a> below.</td></tr>
+<tr><td><code>wait(x)</code></td><td>fn -> Promise</td><td>If <code>x</code> is a number, resolves after <code>x</code> milliseconds. If it's a string, resolves with the event the next time an event named <code>x</code> fires.</td></tr>
+<tr><td><code>transition(fn)</code></td><td>fn</td><td>Wraps <code>fn</code> in <code>document.startViewTransition()</code>, with a fallback if unsupported.</td></tr>
+</tbody>
+</table>
+
+Inside `on-*` and `live` bodies, four additional bindings are in scope:
 
 <table>
 <thead>
@@ -165,14 +182,14 @@ Inside every `on-*` and `live` expression, moxi injects the following variables:
 <tbody>
 <tr><td><code>this</code></td><td><code>Element</code></td><td>The element the attribute is on.</td></tr>
 <tr><td><code>event</code></td><td><code>Event</code></td><td>Available in <code>on-*</code> handlers; undefined for <code>on-init</code> and <code>live</code>.</td></tr>
-<tr><td><code>q(x)</code></td><td>fn -> proxy</td><td>Query helper. <code>x</code> can be a selector string, a single element, or any iterable of elements. See <a href="#the-q-helper">The <code>q()</code> Helper</a> below.</td></tr>
-<tr><td><code>trigger(type, detail, bubbles)</code></td><td>fn</td><td>Dispatches a cancelable <code>CustomEvent</code> from <code>this</code>. <code>bubbles</code> defaults to <code>true</code>; pass <code>false</code> for a non-bubbling event.</td></tr>
-<tr><td><code>wait(x)</code></td><td>fn -> Promise</td><td><code>x</code> can be a number (ms delay) or a string (event name, resolves with the event object).</td></tr>
-<tr><td><code>debounce(ms)</code></td><td>fn -> Promise</td><td>Per-handler debouncer - superseded calls never resolve. Use with <code>await</code>.</td></tr>
-<tr><td><code>transition(fn)</code></td><td>fn</td><td>Wraps <code>fn</code> in <code>document.startViewTransition()</code>, with a fallback if unsupported.</td></tr>
-<tr><td><code>take(cls, from, to)</code></td><td>fn</td><td>Removes <code>cls</code> from every element matching selector <code>from</code>, then adds it to <code>to</code>. Perfect for active-tab / active-nav patterns.</td></tr>
+<tr><td><code>trigger(type, detail, bubbles)</code></td><td>fn</td><td>Dispatches a cancelable <code>CustomEvent</code> from <code>this</code>. <code>bubbles</code> defaults to <code>true</code>. From outside a handler, use <code>q(elt).trigger(...)</code> on the proxy instead.</td></tr>
+<tr><td><code>debounce(ms)</code></td><td>fn -> Promise</td><td>Per-handler debouncer - superseded calls never resolve. Use with <code>await</code>. Handler-scope only because it carries per-handler state.</td></tr>
 </tbody>
 </table>
+
+`q()` directionals (`next`, `prev`, `closest`, `in this`) and `wait("event")` are
+context-aware: in a handler they resolve relative to `this`; called globally they
+resolve relative to `document.documentElement`.
 
 Handler bodies are compiled as **async functions** (via the `AsyncFunction` constructor), so
 `await` works anywhere.
@@ -199,8 +216,8 @@ around the handler body, so:
 
 * If `event.detail` is missing or null (e.g., a plain non-`CustomEvent`), nothing
   is injected and the handler still runs.
-* Names that aren't on `event.detail` resolve normally to the helpers above
-  (`q`, `trigger`, `wait`, ...) or to globals.
+* Names that aren't on `event.detail` resolve normally to `this`, `event`, `trigger`,
+  `debounce`, the global helpers (`q`, `wait`, `transition`), or any other binding.
 * Assignments to a name that *isn't* already a property of `event.detail` fall
   through to the outer scope, so they don't accidentally pollute `detail`.
 
@@ -259,6 +276,7 @@ every matched element:
 <tr><td><code>q(...).count</code></td><td>Returns the number of matched elements.</td></tr>
 <tr><td><code>q(...).arr()</code></td><td>Returns the matched elements as a plain <code>Array</code>, so you can chain <code>.filter()</code>, <code>.map()</code>, etc. without spreading.</td></tr>
 <tr><td><code>q(...).trigger(type, detail, bubbles)</code></td><td>Dispatches the event from every matched element. <code>bubbles</code> defaults to <code>true</code>.</td></tr>
+<tr><td><code>q(...).take(cls, from)</code></td><td>Removes <code>cls</code> from every element matching <code>from</code> (a selector string or iterable of elements), then adds it to every matched element. Perfect for active-tab / active-nav patterns.</td></tr>
 <tr><td><code>q(...).insert(pos, html)</code></td><td>Parses <code>html</code> and inserts it at every matched element. <code>pos</code> is one of <code>'before' | 'start' | 'end' | 'after'</code> - a friendlier spelling of the four <code>insertAdjacentHTML</code> positions.</td></tr>
 <tr><td><code>for (let e of q(...))</code> / <code>[...q(...)]</code></td><td>Iterates over the raw matched elements.</td></tr>
 </tbody>
@@ -291,7 +309,7 @@ on the `document` for global hooks.
 </tr>
 <tr>
   <td><code>refresh</code></td>
-  <td>moxi listens for this bubbling event on the <code>document</code> and re-runs every <code>live</code> expression. Dispatch it (e.g. via <code>trigger('refresh')</code> or <code>document.dispatchEvent(new Event('refresh'))</code>) when state outside the DOM changes and you want live blocks to recompute.</td>
+  <td>moxi listens for this bubbling event on the <code>document</code> and re-runs every <code>live</code> expression. Dispatch it (e.g. via <code>trigger('refresh')</code> from a handler or <code>document.dispatchEvent(new Event('refresh'))</code>) when state outside the DOM changes and you want live blocks to recompute.</td>
 </tr>
 </tbody>
 </table>
@@ -372,7 +390,7 @@ for events via `on-*`, you can react to fixi's lifecycle events with an ordinary
 </div>
 ```
 
-or trigger a fixi request from a moxi handler via `trigger`:
+or trigger a fixi request from a moxi handler by dispatching from the proxy:
 
 ```html
 <button on-click="q('#target').trigger('refresh')">Reload</button>
@@ -400,9 +418,9 @@ or trigger a fixi request from a moxi handler via `trigger`:
 
 ```html
 <nav>
-  <button class="tab active" on-click="take('active', '.tab', this)">One</button>
-  <button class="tab"        on-click="take('active', '.tab', this)">Two</button>
-  <button class="tab"        on-click="take('active', '.tab', this)">Three</button>
+  <button class="tab active" on-click="q(this).take('active', '.tab')">One</button>
+  <button class="tab"        on-click="q(this).take('active', '.tab')">Two</button>
+  <button class="tab"        on-click="q(this).take('active', '.tab')">Three</button>
 </nav>
 ```
 

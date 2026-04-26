@@ -479,7 +479,7 @@
                     assertEq(window.__ts1, 99);
                 })
             </script>
-            <div on-pong="window.__ts1 = event.detail"><button on-click="trigger('pong', 99)">go</button></div>
+            <div on-pong="window.__ts1 = event.detail"><button on-click="q(this).trigger('pong', 99)">go</button></div>
         </div>
 
         <div class="test">
@@ -688,11 +688,9 @@
                     assertEq(window.__dbAbort, 2);
                 })
             </script>
-            <button on-click="
-                window.__dbStart++
-                try { await debounce(40); window.__dbFinish++ }
-                catch (e) { window.__dbAbort++ }
-            ">go</button>
+            <button on-click="window.__dbStart++
+                              try { await debounce(40); window.__dbFinish++ }
+                              catch (e) { window.__dbAbort++ }">go</button>
         </div>
 
         <div class="test">
@@ -705,7 +703,7 @@
                     assertEq(saw, "hello");
                 })
             </script>
-            <div id="snd55"><button on-click="trigger('snd55', 'hello')">go</button></div>
+            <div id="snd55"><button on-click="q(this).trigger('snd55', 'hello')">go</button></div>
         </div>
 
         <div class="test">
@@ -719,7 +717,7 @@
             </script>
             <div class="tab31 active" id="t1">a</div>
             <div class="tab31" id="t2">b</div>
-            <button on-click="take('active', '.tab31', q('#t2'))">go</button>
+            <button on-click="q('#t2').take('active', '.tab31')">go</button>
         </div>
 
         <div class="test">
