@@ -74,13 +74,12 @@
 				has = m=>mods.includes(m), h = has("halt"), debounce = mkDb()
 				if (has("cc")) name = name.replace(/-([a-z])/g, (_,c)=>c.toUpperCase())
 				let target = has("outside") ? doc : elt,
-				opts = {capture: has("capture"), passive: has("passive")},
+				opts = {capture: has("capture"), passive: has("passive"), once: has("once")},
 				fn = new AF("event", ...HARGS, `with(event?.detail||{}){${a.value}}`),
 				handler = elt.__moxi[name] = evt=>{
 					if (evt && (has("self") && evt.target != elt || has("outside") && elt.contains(evt.target))) return
 					if (h || has("prevent")) evt?.preventDefault()
 					if (h || has("stop")) evt?.stopPropagation()
-					if (has("once")) target.removeEventListener(name, handler, opts)
 					return fn.call(elt, evt, q, wait, trigger, debounce).catch(e=>{if(e!=DB) throw e})
 				}
 				if (name == "init") handler()
